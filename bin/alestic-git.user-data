@@ -84,5 +84,16 @@ sudo -i -u $gituser \
 # Clean up
 rm /tmp/$adminkey.pub
 
-exit 0
+# The external IP address for this instance
+ip=$(GET instance-data/latest/meta-data/public-ipv4/)
 
+cat <<EOF
+
+========================================================================
+git and gitolite installation completed successfully!
+Your next step might be:
+
+  git clone git@$ip:gitolite-admin
+
+========================================================================
+EOF

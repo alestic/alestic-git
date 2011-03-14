@@ -17,38 +17,38 @@ git repositories.
 # Start a new Ubuntu 10.10 EC2 instance with user-data
 
   keypair=$USER
-  instancetype=t1.micro
+  instance_type=t1.micro
 
   ami_id=ami-ccf405a5
   region=us-east-1
   zone=us-east-1b
 
-  instance_id=$(
+  instance_id=$(                                  \
     ec2-run-instances                             \
-      --instance-type $instance_type              \
+      --instance-type "$instance_type"            \
       --region $region                            \
-      --availability-zone $zone                   \
-      --key $keypair                              \
+      --availability-zone "$zone"                 \
+      --key "$keypair"                            \
       --instance-initiated-shutdown-behavior stop \
       --user-data-file bin/alestic-git.user-data  \
-      $ami |
+      "$ami_id" |
     egrep ^INSTANCE | cut -f2)
   echo instance_id=$instance_id
 
 # If this is temporary for testing, schedule it to die
 
-  echo ec2kill $instance_id | at now +55min
+  echo ec2kill "$instance_id" | at now +55min
 
 # Wait for the instance to start running and get the IP address
 
-  while host=$(ec2-describe-instances $instance_id |
-    egrep "^INSTANCE.*running" | cut -f17); test -m $host; do sleep 1; done
-  echo host=$ip
+  while ip=$(ec2-describe-instances "$instance_id" |
+    egrep "^INSTANCE.*running" | cut -f17); test -m $ip; do sleep 1; done
+  echo ip=$ip
 
-# Watch the setup and installation if you'd like
+# Watch the setup and installation
 
   ssh ubuntu@$ip tail -F /var/log/user-data.log
-  
+
 # Check out the initial gitolite administration repository
 
   git clone git@$ip:gitolite-admin
