@@ -1,0 +1,88 @@
+#!/bin/bash -ex
+#
+# alestic-git.user-data
+#
+# This user-data script installs and configures git and gitolite
+# on an Ubuntu server on Amazon EC2.
+#
+# The initial gitolite username is "admin" and it uses the ssh keypair
+# used to start the EC2 instance.  The initial repository is cloned with
+#
+#   git clone git@[EC2-INSTANCE]:gitolite-admin
+#
+# For more information, see the gitolite documentation:
+#
+#   https://github.com/sitaramc/gitolite
+#
+
+# This line explained in http://alestic.com/2010/12/ec2-user-data-output
+exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
+
+# system username to own gitolite installation and repositories
+gituser=git
+
+# gitolite username for initial admin user
+adminkey=admin
+
+# Upgrade Ubuntu packages
+export DEBIAN_FRONTEND=noninteractive
+sudo add-apt-repository ppa:alestic
+apt-get update
+apt-get dist-upgrade -y
+
+# Install software, including git
+apt-get install -y \
+  coreutils        \
+  git-core         \
+  ec2-consistent-snapshot
+
+# Create the git user and group for installing gitolite and repositories
+addgroup --gid 500 $gituser
+adduser                 \
+  --home /home/$gituser \
+  --uid 500             \
+  --gid 500             \
+  --disabled-password   \
+  --gecos gitolite      \
+  $gituser
+
+echo 'PATH="$HOME/bin:$PATH"' >> /home/$gituser/.bashrc
+
+# Save a copy of the ssh public key from the EC2 account
+cp /home/ubuntu/.ssh/authorized_keys /tmp/$adminkey.pub
+chmod 0644 /tmp/$adminkey.pub
+
+# The rest of the installation is done as the git user
+sudo -i -u $gituser <<'EOF'
+  # The Ubuntu gitolite package is a bit out of date,
+  # so install gitolite from source on github
+  git clone --branch master git://github.com/sitaramc/gitolite gitolite-source
+  cd gitolite-source
+
+  # Log the initial version of gitolite for posterity
+  version=$(git describe --tags)
+  branch=$(git branch | grep '*' | cut -f2 -d' ')
+  echo "INITIAL VERSION: gitolite $version ($branch)"
+
+  # We'll install gitolite in local directories
+  mkdir -p                    \
+    $HOME/bin                 \
+    $HOME/share/gitolite/conf \
+    $HOME/share/gitolite/hooks
+
+  # Install gitolite
+  src/gl-system-install       \
+    $HOME/bin                 \
+    $HOME/share/gitolite/conf \
+    $HOME/share/gitolite/hooks
+EOF
+
+# Set up gitolite with initial user and repositories
+sudo -i -u $gituser \
+  gl-setup -q /tmp/$adminkey.pub
+
+# Clean up
+rm /tmp/$adminkey.pub
+
+exit 0
+

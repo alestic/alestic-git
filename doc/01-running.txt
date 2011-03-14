@@ -1,0 +1,70 @@
+
+
+                          Alestic Git Server
+
+
+This is a sample explanation of how to set up a git server with
+gitolite on Ubuntu on Amazon EC2.
+
+This is very preliminary and has not been tested much.  Before you
+think of using this, you should already understand how to use and the
+tradeoffs involved with: git, gitolite, Amazon EC2.  This includes the
+fact that Amazon EC2 instances sometimes fail, so you should have
+plans for creating snapshots of your EBS volume(s) and backups of your
+git repositories.
+
+
+# Start a new Ubuntu 10.10 EC2 instance with user-data
+
+  keypair=$USER
+  instancetype=t1.micro
+
+  ami_id=ami-ccf405a5
+  region=us-east-1
+  zone=us-east-1b
+
+  instance_id=$(
+    ec2-run-instances                             \
+      --instance-type $instance_type              \
+      --region $region                            \
+      --availability-zone $zone                   \
+      --key $keypair                              \
+      --instance-initiated-shutdown-behavior stop \
+      --user-data-file bin/alestic-git.user-data  \
+      $ami |
+    egrep ^INSTANCE | cut -f2)
+  echo instance_id=$instance_id
+
+# If this is temporary for testing, schedule it to die
+
+  echo ec2kill $instance_id | at now +55min
+
+# Wait for the instance to start running and get the IP address
+
+  while host=$(ec2-describe-instances $instance_id |
+    egrep "^INSTANCE.*running" | cut -f17); test -m $host; do sleep 1; done
+  echo host=$ip
+
+# Watch the setup and installation if you'd like
+
+  ssh ubuntu@$ip tail -F /var/log/user-data.log
+  
+# Check out the initial gitolite administration repository
+
+  git clone git@$ip:gitolite-admin
+
+# Put users' public ssh keys in:
+
+  vi gitolite-admin/keydir/USERNAME.pub
+
+# Edit configuration to give USERNAME repository privileges in:
+
+  vi gitolite-admin/conf/gitolite.conf
+
+# Read the gitolite administration overview documentation
+
+  http://sitaramc.github.com/gitolite/doc/2-admin.html
+
+# Study the complete gitolite documentation
+
+  http://sitaramc.github.com/gitolite/doc/
