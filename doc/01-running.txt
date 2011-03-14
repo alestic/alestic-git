@@ -10,9 +10,14 @@ This is very preliminary and has not been tested much.  Before you
 think of using this, you should already understand how to use and the
 tradeoffs involved with: git, gitolite, Amazon EC2.  This includes the
 fact that Amazon EC2 instances sometimes fail, so you should have
-plans for creating snapshots of your EBS volume(s) and backups of your
-git repositories.
+plans for creating snapshots of your EBS volume(s) on the git server
+and backups of your git repositories.
 
+
+# Download the latest Alestic Git user-data script
+
+  curl -s -O \
+   https://github.com/alestic/alestic-git/raw/master/bin/alestic-git.user-data
 
 # Start a new Ubuntu 10.10 EC2 instance with user-data
 
@@ -23,6 +28,7 @@ git repositories.
   region=us-east-1
   zone=us-east-1b
 
+  user_data_file=alestic-git.user-data
   instance_id=$(                                  \
     ec2-run-instances                             \
       --instance-type "$instance_type"            \
@@ -30,7 +36,7 @@ git repositories.
       --availability-zone "$zone"                 \
       --key "$keypair"                            \
       --instance-initiated-shutdown-behavior stop \
-      --user-data-file bin/alestic-git.user-data  \
+      --user-data-file "$user_data_file"          \
       "$ami_id" |
     egrep ^INSTANCE | cut -f2)
   echo instance_id=$instance_id
@@ -39,15 +45,29 @@ git repositories.
 
   echo ec2kill "$instance_id" | at now +55min
 
+# Add an instance tag, if you wish
+
+  ec2-create-tags --tag Name="Alestic Git server" $instance_id
+
+# If this is to be a permanent git server, associate Elastic IP
+# address, and add to DNS, set up cron job to snapshot root EBS
+# volume, ...
+
+  [left as an exercise for the reader]
+
 # Wait for the instance to start running and get the IP address
 
   while ip=$(ec2-describe-instances "$instance_id" |
     egrep "^INSTANCE.*running" | cut -f17); test -m $ip; do sleep 1; done
   echo ip=$ip
 
-# Watch the setup and installation
+# Watch the setup and installation and wait for it to complete.
 
   ssh ubuntu@$ip tail -F /var/log/user-data.log
+
+# You might want to reboot the instance to pick up any kernel upgrades
+
+  ec2-reboot-instances $instance_id
 
 # Check out the initial gitolite administration repository
 
@@ -61,7 +81,7 @@ git repositories.
 
   vi gitolite-admin/conf/gitolite.conf
 
-# Read the gitolite administration overview documentation
+# Read the gitolite administration overview
 
   http://sitaramc.github.com/gitolite/doc/2-admin.html
 
