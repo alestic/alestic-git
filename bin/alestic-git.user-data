@@ -59,11 +59,6 @@ sudo -i -u $gituser <<'EOF'
   git clone --branch master git://github.com/sitaramc/gitolite gitolite-source
   cd gitolite-source
 
-  # Log the initial version of gitolite for posterity
-  version=$(git describe --tags)
-  branch=$(git branch | grep '*' | cut -f2 -d' ')
-  echo "INITIAL VERSION: gitolite $version ($branch)"
-
   # We'll install gitolite in local directories
   mkdir -p                    \
     $HOME/bin                 \
@@ -87,10 +82,23 @@ rm /tmp/$adminkey.pub
 # The external IP address for this instance
 ip=$(GET instance-data/latest/meta-data/public-ipv4/)
 
+# gitolite version and branch
+cd /home/$gituser/gitolite-source
+gitolite_version=$(git describe --tags)
+gitolite_branch=$(git branch | grep '*' | cut -f2 -d' ')
+
+# git version
+git_version=$(git --version)
+
 cat <<EOF
 
 ========================================================================
-git and gitolite installation completed successfully!
+
+The Alestic Git server installation completed successfully!
+
+$git_version
+gitolite version $gitolite_version ($gitolite_branch branch)
+
 Your next step might be:
 
   git clone git@$ip:gitolite-admin
