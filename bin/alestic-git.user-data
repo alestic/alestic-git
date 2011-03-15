@@ -5,8 +5,8 @@
 # This user-data script installs and configures git and gitolite
 # on an Ubuntu server on Amazon EC2.
 #
-# The initial gitolite username is "admin" and it uses the ssh keypair
-# used to start the EC2 instance.  The initial repository is cloned with
+# The initial gitolite admin username is named after the ssh keypair used
+# to start the EC2 instance.  The initial repository is cloned with
 #
 #   git clone git@[EC2-INSTANCE]:gitolite-admin
 #
@@ -20,9 +20,6 @@ exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
 
 # system username to own gitolite installation and repositories
 gituser=git
-
-# gitolite username for initial admin user
-adminkey=admin
 
 # Upgrade Ubuntu packages
 export DEBIAN_FRONTEND=noninteractive
@@ -47,6 +44,14 @@ adduser                 \
   $gituser
 
 echo 'PATH="$HOME/bin:$PATH"' >> /home/$gituser/.bashrc
+
+# The external IP address for this instance
+ip=$(GET instance-data/latest/meta-data/public-ipv4/)
+
+# The ssh keypair name used to start this instance. Strip leading non-alphanum.
+adminkey=$(GET instance-data/latest/meta-data/public-keys/ |
+  perl -ne 'print $1 if /^0=[^a-z0-9]*([-.@\w]*)/i')
+true ${adminkey:=admin}
 
 # Save a copy of the ssh public key from the EC2 account
 cp /home/ubuntu/.ssh/authorized_keys /tmp/$adminkey.pub
@@ -75,7 +80,6 @@ sudo -i -u $gituser <<'EOF'
   perl -pi.bak -e 's/^(\$REPO_UMASK =) 0077;/$1 0027;/' $HOME/.gitolite.rc
 EOF
 
-
 # Set up gitolite with initial user and repositories
 sudo -i -u $gituser \
   gl-setup -q /tmp/$adminkey.pub
@@ -83,16 +87,13 @@ sudo -i -u $gituser \
 # Clean up
 rm /tmp/$adminkey.pub
 
-# The external IP address for this instance
-ip=$(GET instance-data/latest/meta-data/public-ipv4/)
+# git version
+git_version=$(git --version)
 
 # gitolite version and branch
 cd /home/$gituser/gitolite-source
 gitolite_version=$(git describe --tags)
 gitolite_branch=$(git branch | grep '*' | cut -f2 -d' ')
-
-# git version
-git_version=$(git --version)
 
 cat <<EOF
 
