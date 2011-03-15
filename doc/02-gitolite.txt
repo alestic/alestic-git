@@ -1,0 +1,51 @@
+
+
+                          Alestic Git Server
+                       gitolite administration
+
+
+# This example assumes you have set $host to the IP address or
+# hostname of the EC2 instance running git and gitolite
+
+  host=...
+
+# Clone the initial gitolite administration repository
+
+  git clone git@$host:gitolite-admin
+
+# Put users' public ssh keys in files named after their username.
+# You'll notice that there is already one public ssh key here created
+# from the EC2 keypair used to start the instance.  For example, you
+# might copy public ssh keys from two people into
+
+  gitolite-admin/keydir/jack.pub
+  gitolite-admin/keydir/jill.pub
+
+# Edit the gitolite configuration to give repository privileges to
+# each user.  You'll notice that the username from the keypair used to
+# start the instance is the only one currently allowed to access and
+# modify the "gitolite-admin" repository which currently controls all
+# reposotiry access.
+
+  gitolite-admin/conf/gitolite.conf
+
+  # Sample new repository
+  repo hillside
+       RW = jack jill
+
+# Commit and push these changes to the gitolite-admin repository
+# (automatically creates the "hillside" repository), then users jack
+# and jill can clone and push changes to the hillside repository using
+# their specified ssh keys.
+
+  git clone git@$host:hillside
+  cd hillside
+  echo "hello, world" > README
+  git add README
+  git commit -m 'initial commit'
+  git push -u origin master
+
+# Study the complete gitolite documentation for details on how to
+# manage your repositories and for many advanced features
+
+  http://sitaramc.github.com/gitolite/doc/
