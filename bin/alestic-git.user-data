@@ -70,7 +70,11 @@ sudo -i -u $gituser <<'EOF'
     $HOME/bin                 \
     $HOME/share/gitolite/conf \
     $HOME/share/gitolite/hooks
+
+  # Allow read access from gitweb (planned)
+  perl -pi.bak -e 's/^(\$REPO_UMASK =) 0077;/$1 0027;/' $HOME/.gitolite.rc
 EOF
+
 
 # Set up gitolite with initial user and repositories
 sudo -i -u $gituser \
