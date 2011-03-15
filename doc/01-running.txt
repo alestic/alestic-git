@@ -20,8 +20,8 @@ and backups of your git repositories.
    https://github.com/alestic/alestic-git/raw/master/bin/alestic-git.user-data
 
 # Start a new Ubuntu 10.10 EC2 instance with user-data to configure it
-# on boot.  This exmample assumes you have uploaded to EC2 an ssh key
-# with your username as described in http://alestic.com/2010/10/ec2-ssh-keys
+# on boot.  This example assumes you have uploaded to EC2 an ssh key with 
+# your username as described in http://alestic.com/2010/10/ec2-ssh-keys
 
   keypair=$USER
   instance_type=t1.micro
