@@ -1,9 +1,11 @@
-#!/bin/bash
+#!/bin/bash -ex
 #
 # alestic-git-init
 #
 # Runs on first boot if EC2 instance to set up gitlite admin user
 #
+
+exec > >(tee /var/log/alestic-git.log >/dev/console) 2>&1
 
 # Only run on first boot of each instance
 instanceid=$(wget -qO- http://instance-data/latest/meta-data/instance-id)

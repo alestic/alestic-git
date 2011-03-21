@@ -28,9 +28,9 @@ case $codename in
   *)          echo "$0: Unrecognized codename: $codename" >&2; exit 1;
 esac
 
-today=$(date +%Y%m%d)
-name="alestic-git-server-ubuntu-$release-$codename-$today"
-description="Alestic Git Server $today"
+now=$(date +%Y%m%d-%H%M)
+name="alestic-git-server-ubuntu-$release-$codename-$now"
+description="Alestic Git Server $now"
 
 export EC2_CERT=$(echo /mnt/cert-*.pem)
 export EC2_PRIVATE_KEY=$(echo /mnt/pk-*.pem)
@@ -143,7 +143,7 @@ EOF
 
 # Install init script and config
 sudo cp /mnt/alestic-git-init $imagedir/usr/bin/alestic-git-init
-sudo cp /mnt/alestic-git.init $imagedir/etc/init/alestic-git
+sudo cp /mnt/alestic-git.conf $imagedir/etc/init/alestic-git.conf
 
 # git version
 git_version=$(sudo chroot $imagedir git --version)
@@ -178,9 +178,8 @@ sudo tar -cSf - -C $imagedir . | sudo tar xvf - -C $ebsimagedir
 sudo umount $imagedir
 sudo umount $ebsimagedir
 ec2-detach-volume "$volumeid"
-while ec2-describe-volumes "$volumeid" | grep -q attached
+while ec2-describe-volumes "$volumeid" | grep -q ATTACHMENT
   do sleep 3; done
-ec2-describe-volumes "$volumeid" #TBD: DEBUG
 snapshotid=$(ec2-create-snapshot "$volumeid" | cut -f2)
 while ec2-describe-snapshots "$snapshotid" | grep -q pending
   do sleep 30; done
@@ -198,6 +197,7 @@ amiid=$(ec2-register                              \
 ec2-delete-volume "$volumeid"
 
 cat <<EOF
+AMI: $amiid $codename $region $arch2
 
 Ubuntu $release $codename
 architecture: $arch ($arch2)
@@ -222,4 +222,3 @@ Test the new AMI using something like:
     $amiid
 
 EOF
-
