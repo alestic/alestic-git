@@ -15,7 +15,7 @@
 #   https://github.com/sitaramc/gitolite
 #
 
-# This line explained in http://alestic.com/2010/12/ec2-user-data-output
+# This line is explained in http://alestic.com/2010/12/ec2-user-data-output
 exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
 
 # system username to own gitolite installation and repositories
@@ -75,14 +75,17 @@ sudo -i -u $gituser <<'EOF'
     $HOME/bin                 \
     $HOME/share/gitolite/conf \
     $HOME/share/gitolite/hooks
-
-  # Allow read access from gitweb (planned)
-  perl -pi.bak -e 's/^(\$REPO_UMASK =) 0077;/$1 0027;/' $HOME/.gitolite.rc
 EOF
 
 # Set up gitolite with initial user and repositories
 sudo -i -u $gituser \
   gl-setup -q /tmp/$adminkey.pub
+
+# Allow read access from gitweb (planned)
+sudo -i -u $gituser \
+  perl -pi -e '
+    s/^(\$REPO_UMASK =) 0077;/$1 0027;/;
+  ' /home/$gituser/.gitolite.rc
 
 # Clean up
 rm /tmp/$adminkey.pub
