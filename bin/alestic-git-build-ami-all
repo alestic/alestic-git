@@ -11,6 +11,9 @@ keypair=$USER
 # Wherever you keep your AWS credentials
 awscredentials=$(echo ~/.ec2/{cert,pk}-*.pem)
 
+# Timestamp for AMI names
+now=$(date +%Y%m%d-%H%M)
+
 for codename in maverick; do
   for region in us-east-1; do # $(ec2-describe-regions); do
     zone=${region}a
@@ -43,7 +46,7 @@ for codename in maverick; do
       # Wait for the instance to start running and get the IP address
       while host=$(ec2-describe-instances "$instance_id" |
         egrep "^INSTANCE.*running" | cut -f17); test -z "$host";
-          do sleep 3; done
+          do sleep 30; done
       echo "$codename $region $arch2 host=$host"
       perl -MIO::Socket::INET -e "
         until(new IO::Socket::INET('$host:22')){sleep 1}"
@@ -62,8 +65,9 @@ for codename in maverick; do
       # Run the AMI builder on the instance
       time ssh ubuntu@$host        \
         /mnt/alestic-git-build-ami \
-          --codename maverick 2>&1 |
-      tee alestic-git-build-ami-$codename-$region-$arch2.log
+          --now "$now"             \
+          --codename $codename 2>&1 |
+      tee alestic-git-$codename-$region-$arch2.log
 
       # Terminate the temporary AMI builder instance
       ec2-terminate-instances $instance_id

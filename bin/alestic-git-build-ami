@@ -7,16 +7,21 @@
 
 # Defaults
 
+# Ubuntu release
 codename=maverick
-#codename=natty
 
-size=8
+# Size of AMI file system
+size=8 # GB
+
+# AMI name timestamp
+now=$(date +%Y%m%d-%H%M)
 
 # Command line options
 while [ $# -gt 0 ]; do
   case $1 in
     --codename)    codename=$2;  shift 2 ;;
     --size)        size=$2;      shift 2 ;;
+    --now)         now=$2;       shift 2 ;;
     *)             echo "$0: Unrecognized option: $1" >&2; exit 1;
   esac
 done
@@ -28,7 +33,6 @@ case $codename in
   *)          echo "$0: Unrecognized codename: $codename" >&2; exit 1;
 esac
 
-now=$(date +%Y%m%d-%H%M)
 name="alestic-git-server-ubuntu-$release-$codename-$now"
 description="Alestic Git Server $now"
 
