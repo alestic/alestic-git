@@ -1,0 +1,225 @@
+#!/bin/bash -ex
+#
+# alestic-git-build-ami
+#
+# Build new AMI for an Alestic Git Server
+#
+
+# Defaults
+
+codename=maverick
+#codename=natty
+
+size=8
+
+# Command line options
+while [ $# -gt 0 ]; do
+  case $1 in
+    --codename)    codename=$2;  shift 2 ;;
+    --size)        size=$2;      shift 2 ;;
+    *)             echo "$0: Unrecognized option: $1" >&2; exit 1;
+  esac
+done
+
+# Setup
+case $codename in
+  maverick)   release=10.10     ;;
+  natty)      release=11.04     ;;
+  *)          echo "$0: Unrecognized codename: $codename" >&2; exit 1;
+esac
+
+today=$(date +%Y%m%d)
+name="alestic-git-server-ubuntu-$release-$codename-$today"
+description="Alestic Git Server $today"
+
+export EC2_CERT=$(echo /mnt/cert-*.pem)
+export EC2_PRIVATE_KEY=$(echo /mnt/pk-*.pem)
+
+if [ $(uname -m) = 'x86_64' ]; then
+  arch=x86_64
+  arch2=amd64
+  ephemeraldev=/dev/sdb
+else
+  arch=i386
+  arch2=i386
+  ephemeraldev=/dev/sda2
+fi
+
+imagename=$codename-server-uec-$arch2.img
+imageurl=http://uec-images.ubuntu.com/$codename/current/unpacked/$imagename.tar.gz
+amisurl=http://uec-images.ubuntu.com/query/$codename/server/released.current.txt
+zoneurl=http://instance-data/latest/meta-data/placement/availability-zone
+zone=$(wget -qO- $zoneurl)
+region=$(echo $zone | perl -pe 's/.$//')
+akiid=$(wget -qO- $amisurl | egrep "ebs.$arch2.$region" | cut -f9)
+#ariid=$(wget -qO- $amisurl | egrep "ebs.$arch2.$region" | cut -f10)
+
+# Update and install Ubuntu packages
+export DEBIAN_FRONTEND=noninteractive
+sudo perl -pi -e 's/^# *(deb .*multiverse)$/$1/' /etc/apt/sources.list
+sudo apt-get update
+sudo -E apt-get upgrade -y
+sudo -E apt-get install -y \
+  ec2-api-tools            \
+  ec2-ami-tools            \
+  xfsprogs
+
+# Download base Ubuntu server image built by Canonical
+image=/mnt/$imagename
+imagedir=/mnt/$codename-uec-$arch2
+wget -O- $imageurl |
+  sudo tar xzf - -C /mnt
+sudo mkdir -p $imagedir
+sudo mount -o loop $image $imagedir
+
+# Allow network access from chroot environment
+sudo cp /etc/resolv.conf $imagedir/etc/
+
+# We used XFS for the target root file system
+sudo perl -pi -e 's%(\t/\t)ext4(\t)%${1}xfs${2}%' $imagedir/etc/fstabb
+
+# Upgrade and install packages on the target file system
+sudo chroot $imagedir mount -t proc none /proc
+sudo chroot $imagedir mount -t devpts none /dev/pts
+cat <<EOF | sudo tee $imagedir/usr/sbin/policy-rc.d
+#!/bin/sh
+exit 101
+EOF
+sudo chmod 755 $imagedir/usr/sbin/policy-rc.d
+DEBIAN_FRONTEND=noninteractive
+sudo perl -pi -e 's/^# *(deb .*multiverse)$/$1/' \
+  $imagedir/etc/apt/sources.list                 \
+  $imagedir/etc/cloud/templates/sources.list.tmpl
+sudo chroot $imagedir add-apt-repository ppa:alestic
+sudo chroot $imagedir apt-get update
+sudo -E chroot $imagedir apt-get dist-upgrade -y
+
+#### BEGIN alestic-git
+
+gituser=git
+
+# Install software
+sudo -E chroot $imagedir    \
+  apt-get install -y        \
+    ec2-api-tools           \
+    ec2-consistent-snapshot \
+    coreutils               \
+    git-core
+
+# Create git user with hardcoded UID
+sudo chroot $imagedir       \
+  addgroup --gid 500 $gituser
+sudo chroot $imagedir       \
+  adduser                   \
+    --home /home/$gituser   \
+    --uid 500               \
+    --gid 500               \
+    --disabled-password     \
+    --gecos gitolite        \
+    $gituser
+
+echo 'PATH="$HOME/bin:$PATH"' |
+  sudo tee -a $imagedir/home/$gituser/.bashrc
+
+# Install git as the git user in the chroot
+sudo chroot $imagedir sudo -i -u $gituser <<EOF
+  # The Ubuntu gitolite package is a bit out of date,
+  # so install gitolite from source on github
+  git clone --branch master git://github.com/sitaramc/gitolite gitolite-source
+  cd gitolite-source
+
+  # We'll install gitolite in local directories
+  mkdir -p                    \
+    /home/$gituser/bin                 \
+    /home/$gituser/share/gitolite/conf \
+    /home/$gituser/share/gitolite/hooks
+
+  # Install gitolite
+  src/gl-system-install       \
+    /home/$gituser/bin                 \
+    /home/$gituser/share/gitolite/conf \
+    /home/$gituser/share/gitolite/hooks
+EOF
+
+# Install init script and config
+sudo cp /mnt/alestic-git-init $imagedir/usr/bin/alestic-git-init
+sudo cp /mnt/alestic-git.init $imagedir/etc/init/alestic-git
+
+# git version
+git_version=$(sudo chroot $imagedir git --version)
+
+# gitolite version and branch
+gitolite_version=$(sudo chroot $imagedir bash -c \
+  "cd /home/$gituser/gitolite-source; git describe --tags")
+gitolite_branch=$(sudo chroot $imagedir bash -c \
+  "cd /home/$gituser/gitolite-source; git branch | grep '*' | cut -f2 -d' '")
+
+#### END alestic-git
+
+# Clean up chroot environment
+sudo chroot $imagedir umount /proc
+sudo chroot $imagedir umount /dev/pts
+sudo rm -f $imagedir/usr/sbin/policy-rc.d
+
+# Create and mount temporary EBS volume with file system to hold new AMI image
+volumeid=$(ec2-create-volume --size $size --availability-zone $zone |
+  cut -f2)
+instanceid=$(wget -qO- http://instance-data/latest/meta-data/instance-id)
+ec2-attach-volume --device /dev/sdi --instance "$instanceid" "$volumeid"
+while [ ! -e /dev/sdi ]
+  do sleep 3; done
+sudo mkfs.xfs -L uec-rootfs /dev/sdi
+ebsimagedir=$imagedir-ebs
+sudo mkdir $ebsimagedir
+sudo mount /dev/sdi $ebsimagedir
+
+# Copy file system from temporary rootdir to EBS volume
+sudo tar -cSf - -C $imagedir . | sudo tar xvf - -C $ebsimagedir
+sudo umount $imagedir
+sudo umount $ebsimagedir
+ec2-detach-volume "$volumeid"
+while ec2-describe-volumes "$volumeid" | grep -q attached
+  do sleep 3; done
+ec2-describe-volumes "$volumeid" #TBD: DEBUG
+snapshotid=$(ec2-create-snapshot "$volumeid" | cut -f2)
+while ec2-describe-snapshots "$snapshotid" | grep -q pending
+  do sleep 30; done
+
+# Register the snapshot as a new AMI
+amiid=$(ec2-register                              \
+  --name "$name"                                  \
+  --description "$description"                    \
+  --architecture "$arch"                          \
+  --kernel "$akiid"                               \
+  --block-device-mapping $ephemeraldev=ephemeral0 \
+  --snapshot "$snapshotid" |
+  cut -f2)
+
+ec2-delete-volume "$volumeid"
+
+cat <<EOF
+
+Ubuntu $release $codename
+architecture: $arch ($arch2)
+region:       $region ($zone)
+aki id:       $akiid
+name:         $name
+description:  $description
+EBS volume:   $volumeid (deleted)
+EBS snapshot: $snapshotid
+git:          $git_version
+gitolite:     $gitolite_version ($gitolite_branch branch)
+AMI:          $amiid
+
+Test the new AMI using something like:
+
+  ec2-run-instances \\
+    --key \$USER \\
+    --region $region \\
+    --availability-zone $zone \\
+    --instance-type t1.micro \\
+    --instance-initiated-shutdown-behavior terminate \\
+    $amiid
+
+EOF
+

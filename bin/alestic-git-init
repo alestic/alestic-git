@@ -1,0 +1,57 @@
+#!/bin/bash
+#
+# alestic-git-init
+#
+# Runs on first boot if EC2 instance to set up gitlite admin user
+#
+
+# Only run on first boot of each instance
+instanceid=$(wget -qO- http://instance-data/latest/meta-data/instance-id)
+been_run_file=/var/lib/cloud/sem/alestic-git.$instanceid
+if [ -f $been_run_file ]; then
+  exit
+fi
+
+gituser=git
+
+# The external IP address for this instance
+ip=$(GET instance-data/latest/meta-data/public-ipv4/)
+
+# The ssh keypair name used to start this instance. Strip leading non-alphanum.
+adminkey=$(GET instance-data/latest/meta-data/public-keys/ |
+  perl -ne 'print $1 if /^0=[^a-z0-9]*([-.@\w]*)/i')
+true ${adminkey:=admin}
+
+# Save a copy of the ssh public key from the EC2 account
+cp /home/ubuntu/.ssh/authorized_keys /tmp/$adminkey.pub
+chmod 0644 /tmp/$adminkey.pub
+
+# Set up gitolite with the EC2 ssh key as the first admin user
+sudo -i -u $gituser \
+  gl-setup -q /tmp/$adminkey.pub
+
+echo "alestic-git has been set up on this instance" > $been_run_file
+
+# git version
+git_version=$(git --version)
+
+# gitolite version and branch
+cd /home/$gituser/gitolite-source
+gitolite_version=$(git describe --tags)
+gitolite_branch=$(git branch | grep '*' | cut -f2 -d' ')
+
+cat <<EOF
+
+========================================================================
+
+The Alestic Git server installation completed successfully!
+
+$git_version
+gitolite version $gitolite_version ($gitolite_branch branch)
+
+Your next step might be:
+
+  git clone git@$ip:gitolite-admin
+
+========================================================================
+EOF

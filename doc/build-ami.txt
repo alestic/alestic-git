@@ -1,0 +1,72 @@
+
+# Start an instance of the desired architecture in the desired region
+# This example assumes you have uploaded to EC2 an ssh key with your
+# username as described in http://alestic.com/2010/10/ec2-ssh-keys
+
+  keypair=$USER
+  instance_type=c1.medium
+
+  ami_id=ami-ccf405a5 # Ubuntu 10.10 Karmic 32-bit
+  region=us-east-1
+  zone=${region}b
+
+  instance_id=$(                                       \
+    ec2-run-instances                                  \
+      --instance-type "$instance_type"                 \
+      --region $region                                 \
+      --availability-zone "$zone"                      \
+      --key "$keypair"                                 \
+      --instance-initiated-shutdown-behavior terminate \
+      "$ami_id" |
+    egrep ^INSTANCE | cut -f2)
+  echo instance_id=$instance_id
+
+# If you don't expect to need this long, schedule it to die
+
+  echo ec2kill "$instance_id" | at now +55min
+
+# Add an instance tag, if you wish
+
+  ec2-create-tags --tag Name="Alestic Git AMI builder" $instance_id
+
+# Wait for the instance to start running and get the IP address
+
+  while host=$(ec2-describe-instances "$instance_id" |
+    egrep "^INSTANCE.*running" | cut -f17); test -z "$host"; do sleep 1; done
+  echo host=$host
+
+# Copy AMI build script and your AWS credentials to the instance (from
+# whereever you keep them)
+
+  rsync                       \
+    --rsync-path="sudo rsync" \
+    bin/alestic-git-build-ami \
+    etc/alestic-git.init      \
+    bin/alestic-git-init      \
+    ~/.ec2/{cert,pk}-*.pem    \
+    ubuntu@$host:/mnt/
+
+#TBD: Could download the AMI builder script directly from github to instance
+
+# Run the AMI builder on the instance
+
+  ssh ubuntu@$host             \
+    /mnt/alestic-git-build-ami \
+      --codename maverick 2>&1 |
+  tee alestic-git-build-ami.log
+
+# Test the new AMI
+
+  ...
+
+# Terminate the temporary AMI builder instance and test instance
+
+  ec2-terminate-instances $instance_id
+
+# Clean up if failure
+
+  - sudo umount /mnt/maverick*
+  - sudo umount /dev/sdi
+  - detach volume from /dev/sdi
+  - delete volume
+  - 
