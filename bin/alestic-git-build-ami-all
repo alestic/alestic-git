@@ -7,25 +7,48 @@
 
 # This assumes you have uploaded to EC2 an ssh key with your username
 # as described in http://alestic.com/2010/10/ec2-ssh-keys
-true ${keypair:=$USER}
+keypair="$USER"
 
 # Wherever you keep your AWS credentials
-true ${awscredentials:=$(echo ~/.ec2/cert-*.pem ~/.ec2/pk-*.pem)}
+awscredentials=$(echo ~/.ec2/cert-*.pem ~/.ec2/pk-*.pem)
 
 # Brand used in AMI name and description
-true ${brand:=My}
+brand="My"
 
-# Regions
-true ${regions:=$(ec2-describe-regions | cut -f2 | sort -r)}
+# Regions (separate by spaces)
+regions=$(ec2-describe-regions | cut -f2 | sort -r)
+
+# Architectures (separate by spaces)
+architectures="i386 amd64"
+
+# Size of AMI file system
+size=8 # GB
+
+# Ubuntu releases (separate by spaces)
+codenames="maverick"
 
 # Timestamp for AMI names
 now=$(date -u +%Y%m%d-%H%M)
 
-for codename in maverick; do
+# Command line options
+while [ $# -gt 0 ]; do
+  case $1 in
+    --keypair)       keypair=$2;       shift 2 ;;
+    --brand)         brand=$2;         shift 2 ;;
+    --regions)       regions=$2;       shift 2 ;;
+    --architectures) architectures=$2; shift 2 ;;
+    --size)          size=$2;          shift 2 ;;
+    --codenames)     codenames=$2;     shift 2 ;;
+    --now)           now=$2;           shift 2 ;;
+    *)               echo "$0: Unrecognized option: $1" >&2; exit 1;
+  esac
+done
+
+for codename in $codenames; do
   for region in $regions; do
     export EC2_URL=http://ec2.$region.amazonaws.com
     zone=${region}a
-    for arch2 in i386; do # amd64; do
+    for arch2 in $architectures; do
 
       amisurl=http://uec-images.ubuntu.com/query/$codename/server/released.current.txt
       amiid=$(wget -qO- $amisurl | egrep "ebs.$arch2.$region" | cut -f8)

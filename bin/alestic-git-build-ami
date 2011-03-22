@@ -2,29 +2,31 @@
 #
 # alestic-git-build-ami
 #
-# Build new AMI for an Alestic Git Server
+# Build new AMI for an Alestic Git Server.
+#
+# This expects to run on an EC2 instance.
 #
 
 # Defaults
 
-# Ubuntu release
-codename=maverick
+# Brand used in AMI name and description
+brand="My"
 
 # Size of AMI file system
 size=8 # GB
 
-# Brand used in AMI name and description
-brand="My"
+# Ubuntu release
+codename=maverick
 
 # AMI name timestamp
-now=$(date +%Y%m%d-%H%M)
+now=$(date -u +%Y%m%d-%H%M)
 
 # Command line options
 while [ $# -gt 0 ]; do
   case $1 in
-    --codename)    codename=$2;  shift 2 ;;
-    --size)        size=$2;      shift 2 ;;
     --brand)       brand=$2;     shift 2 ;;
+    --size)        size=$2;      shift 2 ;;
+    --codename)    codename=$2;  shift 2 ;;
     --now)         now=$2;       shift 2 ;;
     *)             echo "$0: Unrecognized option: $1" >&2; exit 1;
   esac
