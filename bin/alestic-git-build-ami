@@ -192,8 +192,7 @@ sudo umount $ebsimagedir
 ec2-detach-volume "$volumeid"
 while ec2-describe-volumes "$volumeid" | grep -q ATTACHMENT
   do sleep 3; done
-snapshotid=$(ec2-create-snapshot "$volumeid" | cut -f2)
-ec2-create-tags --tag Name="$name" $snapshotid
+snapshotid=$(ec2-create-snapshot --description "$name" "$volumeid" | cut -f2)
 while ec2-describe-snapshots "$snapshotid" | grep -q pending
   do sleep 30; done
 
