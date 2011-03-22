@@ -13,6 +13,9 @@ codename=maverick
 # Size of AMI file system
 size=8 # GB
 
+# Brand used in AMI name and description
+brand="My"
+
 # AMI name timestamp
 now=$(date +%Y%m%d-%H%M)
 
@@ -21,6 +24,7 @@ while [ $# -gt 0 ]; do
   case $1 in
     --codename)    codename=$2;  shift 2 ;;
     --size)        size=$2;      shift 2 ;;
+    --brand)       brand=$2;     shift 2 ;;
     --now)         now=$2;       shift 2 ;;
     *)             echo "$0: Unrecognized option: $1" >&2; exit 1;
   esac
@@ -43,8 +47,8 @@ else
   ephemeraldev=/dev/sda2
 fi
 
-name="alestic-git-server-ubuntu-$release-$codename-$arch2-$now"
-description="Alestic Git Server - Ubuntu $release $codename $arch2 $now"
+name="\L$brand\E-git-server-ubuntu-$release-$codename-$arch2-$now"
+description="$brand Git Server - Ubuntu $release \u$codename $arch2 $now"
 
 export EC2_CERT=$(echo /mnt/cert-*.pem)
 export EC2_PRIVATE_KEY=$(echo /mnt/pk-*.pem)

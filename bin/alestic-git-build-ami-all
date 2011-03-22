@@ -2,7 +2,8 @@
 #
 # alestic-git-build-ami-all
 #
-# Build all Alestic Git Server AMIs
+# Build Alestic Git Server AMIs for all regions, architectures
+#
 
 # This assumes you have uploaded to EC2 an ssh key with your username
 # as described in http://alestic.com/2010/10/ec2-ssh-keys
@@ -10,6 +11,9 @@ keypair=$USER
 
 # Wherever you keep your AWS credentials
 awscredentials=$(echo ~/.ec2/{cert,pk}-*.pem)
+
+# Brand used in AMI name and description
+true ${brand:=My}
 
 # Timestamp for AMI names
 now=$(date +%Y%m%d-%H%M)
@@ -41,7 +45,10 @@ for codename in maverick; do
       echo "$codename $region $arch2 instance_id=$instance_id"
 
       # Add an instance tag
-      ec2-create-tags --tag Name="Alestic Git AMI builder" $instance_id
+      ec2-create-tags                        \
+        --region $region                     \
+        --tag Name="Alestic Git AMI builder" \
+         $instance_id
 
       # Wait for the instance to start running and get the IP address
       while host=$(ec2-describe-instances "$instance_id" |
@@ -65,8 +72,9 @@ for codename in maverick; do
       # Run the AMI builder on the instance
       time ssh ubuntu@$host        \
         /mnt/alestic-git-build-ami \
-          --now "$now"             \
-          --codename $codename 2>&1 |
+          --codename $codename     \
+          --brand "$brand"         \
+          --now "$now"         2>&1 |
       tee alestic-git-$codename-$region-$arch2.log
 
       # Terminate the temporary AMI builder instance
