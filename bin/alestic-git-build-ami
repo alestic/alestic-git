@@ -225,12 +225,10 @@ AMI:          $amiid
 
 Test the new AMI using something like:
 
+  export EC2_URL=http://ec2.$region.amazonaws.com
   ec2-run-instances \\
     --key \$USER \\
-    --region $region \\
-    --availability-zone $zone \\
     --instance-type t1.micro \\
-    --instance-initiated-shutdown-behavior terminate \\
     $amiid
 
 EOF
