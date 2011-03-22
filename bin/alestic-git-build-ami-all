@@ -7,10 +7,10 @@
 
 # This assumes you have uploaded to EC2 an ssh key with your username
 # as described in http://alestic.com/2010/10/ec2-ssh-keys
-keypair=$USER
+true ${keypair:=$USER}
 
 # Wherever you keep your AWS credentials
-awscredentials=$(echo ~/.ec2/{cert,pk}-*.pem)
+true ${awscredentials:=$(echo ~/.ec2/cert-*.pem ~/.ec2/pk-*.pem)}
 
 # Brand used in AMI name and description
 true ${brand:=My}
@@ -19,7 +19,7 @@ true ${brand:=My}
 now=$(date +%Y%m%d-%H%M)
 
 for codename in maverick; do
-  for region in us-east-1; do # $(ec2-describe-regions); do
+  for region in us-east-1; do # $(ec2-describe-regions | cut -f2 | sort -r); do
     export EC2_URL=http://ec2.$region.amazonaws.com
     zone=${region}a
     for arch2 in i386; do # amd64; do
