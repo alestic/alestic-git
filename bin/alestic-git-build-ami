@@ -47,8 +47,8 @@ else
   ephemeraldev=/dev/sda2
 fi
 
-name="\L$brand\E-git-server-ubuntu-$release-$codename-$arch2-$now"
-description="$brand Git Server - Ubuntu $release \u$codename $arch2 $now"
+name="${brand,}-git-server-ubuntu-$release-$codename-$arch2-$now"
+description="$brand Git Server - Ubuntu $release ${codename^} $arch2 $now"
 
 export EC2_CERT=$(echo /mnt/cert-*.pem)
 export EC2_PRIVATE_KEY=$(echo /mnt/pk-*.pem)
