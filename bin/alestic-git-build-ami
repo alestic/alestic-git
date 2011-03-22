@@ -169,6 +169,8 @@ sudo chroot $imagedir umount /proc
 sudo chroot $imagedir umount /dev/pts
 sudo rm -f $imagedir/usr/sbin/policy-rc.d
 
+export EC2_URL=http://ec2.$region.amazonaws.com
+
 # Create and mount temporary EBS volume with file system to hold new AMI image
 volumeid=$(ec2-create-volume --size $size --availability-zone $zone |
   cut -f2)
