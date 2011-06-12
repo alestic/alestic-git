@@ -16,7 +16,7 @@ brand="My"
 size=8 # GB
 
 # Ubuntu release
-codename=maverick
+codename=natty
 
 # AMI name timestamp
 now=$(date -u +%Y%m%d-%H%M)
