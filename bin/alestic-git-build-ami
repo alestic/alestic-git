@@ -178,12 +178,13 @@ volumeid=$(ec2-create-volume --size $size --availability-zone $zone |
   cut -f2)
 instanceid=$(wget -qO- http://instance-data/latest/meta-data/instance-id)
 ec2-attach-volume --device /dev/sdi --instance "$instanceid" "$volumeid"
-while [ ! -e /dev/sdi ]
+while [ ! -e /dev/sdi -a ! -e /dev/xvdi ]
   do sleep 3; done
-sudo mkfs.xfs -L uec-rootfs /dev/sdi
+dev=$(ls /dev/sdi /dev/xvdi)
+sudo mkfs.xfs -L uec-rootfs $dev
 ebsimagedir=$imagedir-ebs
 sudo mkdir $ebsimagedir
-sudo mount /dev/sdi $ebsimagedir
+sudo mount $dev $ebsimagedir
 
 # Copy file system from temporary rootdir to EBS volume
 sudo tar -cSf - -C $imagedir . | sudo tar xvf - -C $ebsimagedir
