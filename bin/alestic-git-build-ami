@@ -86,7 +86,7 @@ sudo mount -o loop $image $imagedir
 sudo cp /etc/resolv.conf $imagedir/etc/
 
 # We used XFS for the target root file system
-sudo perl -pi -e 's%(\t/\t)ext4(\t)%${1}xfs${2}%' $imagedir/etc/fstabb
+sudo perl -pi -e 's%(\t/\t)ext4(\t)%${1}xfs${2}%' $imagedir/etc/fstab
 
 # Upgrade and install packages on the target file system
 sudo chroot $imagedir mount -t proc none /proc
