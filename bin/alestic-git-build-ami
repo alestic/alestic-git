@@ -55,14 +55,14 @@ description="$brand Git Server - Ubuntu $release ${codename^} $arch2 $now"
 export EC2_CERT=$(echo /mnt/cert-*.pem)
 export EC2_PRIVATE_KEY=$(echo /mnt/pk-*.pem)
 
-imagename=$codename-server-uec-$arch2.img
-imageurl=http://uec-images.ubuntu.com/$codename/current/unpacked/$imagename.tar.gz
+imagename=$codename-server-cloudimg-$arch2
+imageurl=http://uec-images.ubuntu.com/$codename/current/$imagename.tar.gz
 amisurl=http://uec-images.ubuntu.com/query/$codename/server/released.current.txt
 zoneurl=http://instance-data/latest/meta-data/placement/availability-zone
 zone=$(wget -qO- $zoneurl)
 region=$(echo $zone | perl -pe 's/.$//')
-akiid=$(wget -qO- $amisurl | egrep "ebs.$arch2.$region" | cut -f9)
-#ariid=$(wget -qO- $amisurl | egrep "ebs.$arch2.$region" | cut -f10)
+akiid=$(wget -qO- $amisurl | egrep "ebs.$arch2.$region.*paravirtual" | cut -f9)
+#ariid=$(wget -qO- $amisurl | egrep "ebs.$arch2.$region.*paravirtual" | cut -f10)
 
 # Update and install Ubuntu packages
 export DEBIAN_FRONTEND=noninteractive
@@ -71,12 +71,12 @@ sudo apt-get update
 sudo -E apt-get upgrade -y
 sudo -E apt-get install -y \
   ec2-api-tools            \
-  ec2-ami-tools            \
-  xfsprogs
+  ec2-ami-tools
+#  xfsprogs
 
 # Download base Ubuntu server image built by Canonical
-image=/mnt/$imagename
-imagedir=/mnt/$codename-uec-$arch2
+image=/mnt/$imagename.img
+imagedir=/mnt/$codename-cloudimg-$arch2
 wget -O- $imageurl |
   sudo tar xzf - -C /mnt
 sudo mkdir -p $imagedir
@@ -86,7 +86,7 @@ sudo mount -o loop $image $imagedir
 sudo cp /etc/resolv.conf $imagedir/etc/
 
 # We used XFS for the target root file system
-sudo perl -pi -e 's%(\t/\t)ext4(\t)%${1}xfs${2}%' $imagedir/etc/fstab
+#sudo perl -pi -e 's%(\t/\t)ext4(\t)%${1}xfs${2}%' $imagedir/etc/fstab
 
 # Upgrade and install packages on the target file system
 sudo chroot $imagedir mount -t proc none /proc
@@ -178,10 +178,11 @@ volumeid=$(ec2-create-volume --size $size --availability-zone $zone |
   cut -f2)
 instanceid=$(wget -qO- http://instance-data/latest/meta-data/instance-id)
 ec2-attach-volume --device /dev/sdi --instance "$instanceid" "$volumeid"
-while [ ! -e /dev/sdi -a ! -e /dev/xvdi ]
+dev=/dev/xvdi
+while [ ! -e $dev ]
   do sleep 3; done
-dev=$(ls /dev/sdi /dev/xvdi)
-sudo mkfs.xfs -L uec-rootfs $dev
+#sudo mkfs.xfs -L cloudimg-rootfs $dev
+sudo mkfs.ext4 -L cloudimg-rootfs $dev
 ebsimagedir=$imagedir-ebs
 sudo mkdir $ebsimagedir
 sudo mount $dev $ebsimagedir
@@ -212,17 +213,17 @@ ec2-delete-volume "$volumeid"
 cat <<EOF
 AMI: $amiid $codename $region $arch2
 
-Ubuntu $release $codename
-architecture: $arch ($arch2)
-region:       $region ($zone)
+ami id:       $amiid
 aki id:       $akiid
+region:       $region ($zone)
+architecture: $arch ($arch2)
+os:           Ubuntu $release $codename
 name:         $name
 description:  $description
 EBS volume:   $volumeid (deleted)
 EBS snapshot: $snapshotid
 git:          $git_version
 gitolite:     $gitolite_version ($gitolite_branch branch)
-AMI:          $amiid
 
 Test the new AMI using something like:
 

@@ -25,7 +25,7 @@ architectures="i386 amd64"
 size=8 # GB
 
 # Ubuntu releases (separate by spaces)
-codenames="maverick"
+codenames="natty"
 
 # Timestamp for AMI names
 now=$(date -u +%Y%m%d-%H%M)
@@ -51,7 +51,7 @@ for codename in $codenames; do
     for arch2 in $architectures; do
 
       amisurl=http://uec-images.ubuntu.com/query/$codename/server/released.current.txt
-      amiid=$(wget -qO- $amisurl | egrep "ebs.$arch2.$region" | cut -f8)
+      amiid=$(wget -qO- $amisurl | egrep "ebs.$arch2.$region.*paravirtual" | cut -f8)
 
       # Start an instance of the desired architecture in the desired region
       if [ $arch2 = 'i386' ]; then
