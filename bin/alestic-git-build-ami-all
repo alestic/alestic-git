@@ -25,7 +25,7 @@ architectures="i386 amd64"
 size=8 # GB
 
 # Ubuntu releases (separate by spaces)
-codenames="natty"
+codenames="oneiric"
 
 # Timestamp for AMI names
 now=$(date -u +%Y%m%d-%H%M)

@@ -17,10 +17,10 @@ fi
 gituser=git
 
 # The external IP address for this instance
-ip=$(GET instance-data/latest/meta-data/public-ipv4/)
+ip=$(wget -qO- instance-data/latest/meta-data/public-ipv4/)
 
 # The ssh keypair name used to start this instance. Strip leading non-alphanum.
-adminkey=$(GET instance-data/latest/meta-data/public-keys/ |
+adminkey=$(wget -qO- instance-data/latest/meta-data/public-keys/ |
   perl -ne 'print $1 if /^0=[^a-z0-9]*([-.@\w]*)/i')
 true ${adminkey:=admin}
 
