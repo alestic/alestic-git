@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Alestic Git Server - Start Instructions</title>
+    <meta name="robots" content="noindex">
+    <link rel="stylesheet" href="https://raw.github.com/twitter/bootstrap/master/docs/assets/css/bootstrap.css" type="text/css" />
+    <script type="text/javascript">//<![CDATA[
+      onload=function(){
+        // URL parameters
+        var urlKeys   = [];
+        var urlParams = {};
+        (function () {
+          var k, e,
+              a = /\+/g,  // Regex for replacing addition symbol with a space
+              r = /([^&=]+)=?([^&]*)/g,
+              d = function (s) { return decodeURIComponent(s.replace(a," ")); },
+              q = window.location.search.substring(1);
+          while (e = r.exec(q)) {
+            k = d(e[1]);
+            urlKeys.push(k);
+            urlParams[k] = d(e[2]);
+          }
+        })();
+        // Get elements with a specified class name
+        if (document.getElementsByClassName == undefined) {
+          document.getElementsByClassName = function(className) {
+            var hasClassName = new RegExp("(?:^|\\s)" + className +"(?:$|\\s)");
+            var allElements = document.getElementsByTagName("*");
+            var results = [];
+            var element;
+            for (var i = 0; (element = allElements[i]) != null; i++) {
+              var elementClass = element.className;
+              if (elementClass && elementClass.indexOf(className) != -1 &&
+                  hasClassName.test(elementClass))
+                results.push(element);
+            }
+            return results;
+          }
+        }
+        // Find elements with class "param-KEY" and replace with ?KEY= value.
+        (function () {
+          for(var i = 0; i < urlKeys.length; ++i) {
+            var key = urlKeys[i];
+            var elements = document.getElementsByClassName('param-'+key);
+            for(var j = 0; j < elements.length; ++j) {
+              elements[j].innerHTML = urlParams[key];
+            }
+          }
+        })();
+      }
+    //]]></script>
+  </head>
+
+  <body>
+    <h1>Alestic Git Server - Start Instructions</h1>
+
+    <p>
+        You have started an EC2 instance running a Git server with
+        gitolite using an AMI built by
+        <a href="http://alestic.com/">Alestic.com</a> (Eric Hammond).
+    </p>
+
+    <p>
+        You can get started managing your Git repositories and access
+        control by cloning the gitolite admin repository.  Your
+        command will look something like this:
+    </p>
+
+    <pre>    git clone git@<span class="param-ip">YOURHOST</span>:gitolite-admin</pre>
+
+    <p>
+        Update the command to use the current IP address of your EC2
+        instance.
+    </p>
+
+    <p>
+        The recommended way to run an Alestic Git server is to first
+        <a href="http://alestic.com/2010/10/ec2-ssh-keys">upload your
+        personal ssh key to Amazon EC2</a> and then specify that key
+        when you run the Alestic Git AMI.  If you started an Alestic
+        Git AMI with a different EC2 keypair, then you will need to
+        update your <code>$HOME/.ssh/config</code> file to include
+        lines like the following.  Make sure you specify the correct
+        location of the EC2 ssh key file.
+    </p>
+
+    <pre>    Host <span class="param-ip">YOURHOST</span>
+        IdentityFile <span class="param-adminuser">EC2KEYPAIR</span>.pem</pre>
+
+    <p>
+        You will find it easier to use you Git+gitolite server if you
+        associate an Elastic IP address with it and add a hostname in
+        your DNS.
+    </p>
+
+    <p>
+        For more information:
+    </p>
+
+    <dl>
+        <dt><a href="http://alestic.com/alestic-git/">Alestic Git</a></dt>
+        <dd>High level information on the Alestic Git AMIs</dd>
+
+        <dt><a href="http://git-scm.com/">Git</a></dt>
+        <dd>Documentation on the Git version control system</dd>
+
+        <dt><a href="http://sitaramc.github.com/gitolite/">gitolite</a></dt>
+        <dd>Documentation on gitolite, the software you will use to
+          manage your Git repositories and access control</dd>
+    </dl>
+
+  </body>
+</html>

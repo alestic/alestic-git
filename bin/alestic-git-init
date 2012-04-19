@@ -30,15 +30,25 @@ chmod 0644 /tmp/$adminkey.pub
 
 # Set up gitolite with the EC2 ssh key as the first admin user
 sudo -i -u $gituser \
-  gl-setup -q /tmp/$adminkey.pub
+  gitolite setup -pk /tmp/$adminkey.pub
 
+# Set up redirector URL to the start docs
+docurl="http://alestic-git.alestic.com/start/1/?adminuser=$adminkey&amp;ip=$ip"
+sudo mkdir -p /usr/share/nginx/www/alestic-git
+cat <<EOF | sudo tee /usr/share/nginx/www/alestic-git/index.html
+<html><head>
+<meta http-equiv="REFRESH" content="0;url=$docurl">
+</head><body></body></html>
+EOF
+
+# All done
 echo "alestic-git has been set up on this instance" > $been_run_file
 
 # git version
 git_version=$(git --version)
 
 # gitolite version and branch
-cd /home/$gituser/gitolite-source
+cd /home/$gituser/gitolite
 gitolite_version=$(git describe --tags)
 gitolite_branch=$(git branch | grep '*' | cut -f2 -d' ')
 
