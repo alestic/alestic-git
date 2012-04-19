@@ -21,7 +21,7 @@
         <div class="container">
           <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
           </a>
-          <div class="brand">Alestic Git Server - Start</div>
+          <div class="brand">Alestic Git Server - Start Instructions</div>
         </div>
       </div>
     </div>
@@ -52,13 +52,21 @@
             instance.
           </p>
           
-          <h2>ssh Access</h2>
-
+          <p>
+            Once you have a copy of the gitolite admin repository, you
+            can continue following the
+            <a href="http://sitaramc.github.com/gitolite/">gitolite
+            documentation</a> for adding users and repos.
+          </p>
+          
           <p>
             The gitolite software relies on ssh to control access to
             your Git repositories.  If your git clone command above
-            gave you an ssh error, please read this section carefully.
+            gave you an ssh error, please read the next section
+            carefully.
           </p>
+
+          <h2>ssh Access</h2>
 
           <p>
             The recommended way to run an Alestic Git server is to first
@@ -72,23 +80,18 @@
             run an Alestic Git AMI with a different EC2
             keypair, then you will need to update your
             <code>$HOME/.ssh/config</code> file to include lines like the
-            following.  Make sure you specify the correct location of the
-            EC2 ssh key file and the correct IP address or hostname for
-            your instance.
+            following.
           </p>
           
           <pre>Host <span class="param-ip">YOURHOST</span>
     IdentityFile /home/.../<span class="param-adminuser">EC2KEYPAIR</span>.pem</pre>
           
-          <h2>Hostname</h2>
-
           <p>
-            You will find it easier to use you Alestic Git server if you
-            associate an Elastic IP address with the EC2 instance and add
-            a hostname for the IP address in your DNS
-            (e.g., git.example.com).
+            Make sure you specify the correct location of the EC2 ssh
+            key file and the correct IP address or hostname for your
+            instance.
           </p>
-          
+
         </div>
         <div class="span6">
 
@@ -131,6 +134,15 @@
             many great online resources for these fine products.
           </p>
 
+          <h2>Hostname</h2>
+
+          <p>
+            You will find it easier to use you Alestic Git server if you
+            associate an Elastic IP address with the EC2 instance and add
+            a hostname for the IP address in your DNS
+            (e.g., git.example.com).
+          </p>
+          
         </div>
       </div>
     </div>
