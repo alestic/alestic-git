@@ -25,7 +25,7 @@ architectures="i386 amd64"
 size=8 # GB
 
 # Ubuntu releases (separate by spaces)
-codenames="oneiric"
+codenames="precise"
 
 # Timestamp for AMI names
 now=$(date -u +%Y%m%d-%H%M)
@@ -47,7 +47,7 @@ done
 for codename in $codenames; do
   for region in $regions; do
     export EC2_URL=http://ec2.$region.amazonaws.com
-    zone=${region}a
+    zone=${region}e
     for arch2 in $architectures; do
 
       amisurl=http://uec-images.ubuntu.com/query/$codename/server/released.current.txt

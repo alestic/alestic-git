@@ -37,6 +37,7 @@ case $codename in
   maverick)   release=10.10     ;;
   natty)      release=11.04     ;;
   oneiric)    release=11.10     ;;
+  precise)    release=12.04     ;;
   *)          echo "$0: Unrecognized codename: $codename" >&2; exit 1;
 esac
 

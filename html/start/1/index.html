@@ -1,14 +1,14 @@
 <!doctype html>
 <html>
   <head>
-    <title>Alestic Git Server - Start Instructions</title>
+    <title>Alestic Git Server - Start</title>
     <meta charset="utf-8" />
     <meta name="robots" content="noindex" />
-    <link rel="stylesheet" href="http://alestic-git.alestic.com/css/bootstrap.css" type="text/css" />
+    <link rel="stylesheet" href="/css/bootstrap.css" type="text/css" />
     <style>
       body {padding-top: 60px;} /* container flush with bottom of the topbar */
     </style>
-    <script src="http://alestic-git.alestic.com/js/param-substitute.js"></script>
+    <script src="/js/param-substitute.js"></script>
     <script type="text/javascript">//<![CDATA[
       onload=function(){ ParamSubstitute() }
     //]]></script>
@@ -21,7 +21,7 @@
         <div class="container">
           <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
           </a>
-          <div class="brand">Alestic Git Server - Start Instructions</div>
+          <div class="brand">Alestic Git Server - Start</div>
         </div>
       </div>
     </div>
@@ -30,13 +30,17 @@
       <div class="row-fluid">
         <div class="span6">
 
+          <img style="margin:0 0 10px 10px" align="right"
+            width="110" height="110"
+            src="/img/alestic-git-server-20120426.png">
+
           <h2>First Steps</h2>
 
           <p>
             You have started an EC2 instance of the
-            <a href="http://alestic.com/alestic-git/">Alestic Git Server</a>
+            <a href="http://alestic.com/alestic-git/" target="_blank">Alestic Git Server</a>
             using an AMI built by
-            <a href="http://alestic.com/">Alestic.com</a> (Eric Hammond).
+            <a href="http://alestic.com/" target="_blank">Alestic.com</a> (Eric Hammond).
           </p>
           
           <p>
@@ -55,7 +59,7 @@
           <p>
             Once you have a copy of the gitolite admin repository, you
             can continue following the
-            <a href="http://sitaramc.github.com/gitolite/">gitolite
+            <a href="http://sitaramc.github.com/gitolite/" target="_blank">gitolite
             documentation</a> for adding users and repos.
           </p>
           
@@ -70,7 +74,7 @@
 
           <p>
             The recommended way to run an Alestic Git server is to first
-            <a href="http://alestic.com/2010/10/ec2-ssh-keys">upload your
+            <a href="http://alestic.com/2010/10/ec2-ssh-keys" target="_blank">upload your
               personal ssh key to Amazon EC2</a> and specify that key
             when you run the Alestic Git AMI.
           </p>
@@ -80,7 +84,7 @@
             run an Alestic Git AMI with a different EC2
             keypair, then you will need to update your
             <code>$HOME/.ssh/config</code> file to include lines like the
-            following.
+            following:
           </p>
           
           <pre>Host <span class="param-ip">YOURHOST</span>
@@ -105,14 +109,14 @@
           </p>
           
           <dl>
-            <dt><a href="http://git-scm.com/">Git</a></dt>
+            <dt><a href="http://git-scm.com/" target="_blank">Git</a></dt>
             <dd>Documentation on the Git version control system</dd>
             
-            <dt><a href="http://sitaramc.github.com/gitolite/">gitolite</a></dt>
+            <dt><a href="http://sitaramc.github.com/gitolite/" target="_blank">gitolite</a></dt>
             <dd>Documentation on gitolite, the software you will use to
               manage your Git repositories and access control</dd>
 
-            <dt><a href="http://alestic.com/alestic-git/">Alestic Git</a></dt>
+            <dt><a href="http://alestic.com/alestic-git/" target="_blank">Alestic Git</a></dt>
             <dd>High level information on the Alestic Git AMIs</dd>
           </dl>
 
@@ -124,7 +128,7 @@
           </p>
 
           <blockquote>
-            <a href="http://groups.google.com/group/alestic-git">Alestic Git Google group</a>
+            <b><a href="http://groups.google.com/group/alestic-git" target="_blank">Alestic Git Google group</a></b>
           </blockquote>
 
           <p>

@@ -3988,3 +3988,17 @@ a.thumbnail:hover {
 .invisible {
   visibility: hidden;
 }
+
+.navbar-inner {
+  background-color:#9CAECC;
+  background-image: none;
+}
+h2 {
+  color:#9CAECC;
+}
+a, a:hover {
+    color: #009;
+}
+code {
+    color: #333;
+}
