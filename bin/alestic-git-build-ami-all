@@ -10,7 +10,8 @@
 keypair="$USER"
 
 # Wherever you keep your AWS credentials
-awscredentials=$(echo ~/.ec2/cert-*.pem ~/.ec2/pk-*.pem)
+awscredentials=$(echo ~/.aws/cert-*.pem ~/.aws/pk-*.pem)
+for file in $awscredentials; do test -f $file; done
 
 # Brand used in AMI name and description
 brand="My"
