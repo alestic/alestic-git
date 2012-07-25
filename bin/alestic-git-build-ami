@@ -58,8 +58,8 @@ export EC2_CERT=$(echo /mnt/cert-*.pem)
 export EC2_PRIVATE_KEY=$(echo /mnt/pk-*.pem)
 
 imagename=$codename-server-cloudimg-$arch2
-imageurl=http://uec-images.ubuntu.com/$codename/current/$imagename.tar.gz
-amisurl=http://uec-images.ubuntu.com/query/$codename/server/released.current.txt
+imageurl=http://cloud-images.ubuntu.com/$codename/current/$imagename.tar.gz
+amisurl=http://cloud-images.ubuntu.com/query/$codename/server/released.current.txt
 zoneurl=http://instance-data/latest/meta-data/placement/availability-zone
 zone=$(wget -qO- $zoneurl)
 region=$(echo $zone | perl -pe 's/.$//')
@@ -177,6 +177,7 @@ gitolite_branch=$(sudo chroot $imagedir bash -c \
 sudo chroot $imagedir umount /proc
 #sudo chroot $imagedir umount /dev/pts
 sudo rm -f $imagedir/usr/sbin/policy-rc.d
+sudo rm -f $imagedir/etc/resolv.conf
 
 export EC2_URL=http://ec2.$region.amazonaws.com
 
