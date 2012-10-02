@@ -233,6 +233,9 @@ EBS snapshot: $snapshotid
 git:          $git_version
 gitolite:     $gitolite_version ($gitolite_branch branch)
 
+ami_id=$amiid
+snapshot_id=$snapshotid
+
 Test the new AMI using something like:
 
   export EC2_URL=http://ec2.$region.amazonaws.com
