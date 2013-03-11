@@ -16,7 +16,7 @@ brand="My"
 size=8 # GB
 
 # Ubuntu release
-codename=oneiric
+codename=precise
 
 # AMI name timestamp
 now=$(date -u +%Y%m%d-%H%M)
@@ -38,6 +38,7 @@ case $codename in
   natty)      release=11.04     ;;
   oneiric)    release=11.10     ;;
   precise)    release=12.04     ;;
+  quantal)    release=12.10     ;;
   *)          echo "$0: Unrecognized codename: $codename" >&2; exit 1;
 esac
 
@@ -85,7 +86,9 @@ sudo mkdir -p $imagedir
 sudo mount -o loop $image $imagedir
 
 # Allow network access from chroot environment
-sudo cp /etc/resolv.conf $imagedir/etc/
+sudo mkdir -p $imagedir/run/resolvconf
+sudo cp /etc/resolv.conf $imagedir/run/resolvconf/resolv.conf
+#sudo cp /etc/resolv.conf $imagedir/etc/resolvconf/resolv.conf.d/tail
 
 # We used XFS for the target root file system
 #sudo perl -pi -e 's%(\t/\t)ext4(\t)%${1}xfs${2}%' $imagedir/etc/fstab
@@ -105,12 +108,6 @@ sudo perl -pi -e 's/^# *(deb .*multiverse)$/$1/' \
 #sudo chroot $imagedir add-apt-repository ppa:alestic
 sudo chroot $imagedir apt-get update
 sudo -E chroot $imagedir apt-get dist-upgrade -y
-
-# Turn off byobu autolaunch as it causes errors on later chroot commands
-sudo chroot $imagedir       \
-  mkdir -p /root/.byobu /home/ubuntu/.byobu
-sudo chroot $imagedir       \
-  touch /root/.byobu/disable-autolaunch /home/ubuntu/.byobu/disable-autolaunch
 
 #### BEGIN alestic-git
 
@@ -177,19 +174,18 @@ gitolite_branch=$(sudo chroot $imagedir bash -c \
 sudo chroot $imagedir umount /proc
 #sudo chroot $imagedir umount /dev/pts
 sudo rm -f $imagedir/usr/sbin/policy-rc.d
-sudo rm -f $imagedir/etc/resolv.conf
+sudo rm -f $imagedir/run/resolvconf/resolv.conf
 
 export EC2_URL=http://ec2.$region.amazonaws.com
 
 # Create and mount temporary EBS volume with file system to hold new AMI image
-volumeid=$(ec2-create-volume --size $size --availability-zone $zone |
+volumeid=$(sudo -E ec2-create-volume --size $size --availability-zone $zone |
   cut -f2)
 instanceid=$(wget -qO- http://instance-data/latest/meta-data/instance-id)
-ec2-attach-volume --device /dev/sdi --instance "$instanceid" "$volumeid"
+sudo -E ec2-attach-volume --device /dev/sdi --instance "$instanceid" "$volumeid"
 dev=/dev/xvdi
 while [ ! -e $dev ]
   do sleep 3; done
-#sudo mkfs.xfs -L cloudimg-rootfs $dev
 sudo mkfs.ext4 -L cloudimg-rootfs $dev
 ebsimagedir=$imagedir-ebs
 sudo mkdir $ebsimagedir
@@ -199,15 +195,16 @@ sudo mount $dev $ebsimagedir
 sudo tar -cSf - -C $imagedir . | sudo tar xvf - -C $ebsimagedir
 sudo umount $imagedir
 sudo umount $ebsimagedir
-ec2-detach-volume "$volumeid"
-while ec2-describe-volumes "$volumeid" | grep -q ATTACHMENT
+sudo -E ec2-detach-volume "$volumeid"
+while sudo -E ec2-describe-volumes "$volumeid" | grep -q ATTACHMENT
   do sleep 3; done
-snapshotid=$(ec2-create-snapshot --description "$name" "$volumeid" | cut -f2)
-while ec2-describe-snapshots "$snapshotid" | grep -q pending
+snapshotid=$(sudo -E ec2-create-snapshot --description "$name" "$volumeid" |
+             cut -f2)
+while sudo -E ec2-describe-snapshots "$snapshotid" | grep -q pending
   do sleep 30; done
 
 # Register the snapshot as a new AMI
-amiid=$(ec2-register                              \
+amiid=$(sudo -E ec2-register                      \
   --name "$name"                                  \
   --description "$description"                    \
   --architecture "$arch"                          \
@@ -216,7 +213,7 @@ amiid=$(ec2-register                              \
   --snapshot "$snapshotid" |
   cut -f2)
 
-ec2-delete-volume "$volumeid"
+sudo -E ec2-delete-volume "$volumeid"
 
 cat <<EOF
 AMI: $amiid $codename $region $arch2
