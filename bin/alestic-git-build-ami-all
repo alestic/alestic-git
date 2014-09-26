@@ -10,14 +10,15 @@
 keypair="$USER"
 
 # Wherever you keep your AWS credentials
-awscredentials="$EC2_CERT $EC2_PRIVATE_KEY"
+awscredentials="$AWS_CONFIG_FILE"
 for file in $awscredentials; do test -f $file; done
 
 # Brand used in AMI name and description
 brand="My"
 
 # Regions (separate by spaces)
-regions=$(ec2-describe-regions | cut -f2 | sort -r)
+regions=$(aws ec2 describe-regions \
+  --output text --query 'Regions[*].RegionName')
 
 # Architectures (separate by spaces)
 architectures="i386 amd64"
@@ -26,7 +27,7 @@ architectures="i386 amd64"
 size=8 # GB
 
 # Ubuntu releases (separate by spaces)
-codenames="precise"
+codenames="trusty"
 
 # Timestamp for AMI names
 now=$(date -u +%Y%m%d-%H%M)
@@ -47,37 +48,52 @@ done
 
 for codename in $codenames; do
   for region in $regions; do
-    export EC2_URL=http://ec2.$region.amazonaws.com
     zone=${region}e
     for arch2 in $architectures; do
 
       amisurl=http://uec-images.ubuntu.com/query/$codename/server/released.current.txt
-      amiid=$(wget -qO- $amisurl | egrep "ebs.$arch2.$region.*paravirtual" | cut -f8)
+      ami_id=$(wget -qO- $amisurl | egrep "ebs-ssd.$arch2.$region.*paravirtual" | cut -f8)
 
       # Start an instance of the desired architecture in the desired region
       if [ $arch2 = 'i386' ]; then
         instance_type=c1.medium
       else
-        instance_type=m1.large
+        instance_type=m3.large
       fi
 
-      instance_id=$(                                       \
-        ec2-run-instances                                  \
-          --instance-type "$instance_type"                 \
-          --availability-zone "$zone"                      \
-          --key "$keypair"                                 \
-          --instance-initiated-shutdown-behavior terminate \
-          "$amiid" |
-        egrep ^INSTANCE | cut -f2)
+      instance_id=$(aws ec2 run-instances                \
+        --region "$region"                               \
+        --placement "AvailabilityZone=$zone"             \
+        --key "$keypair"                                 \
+        --instance-type "$instance_type"                 \
+        --instance-initiated-shutdown-behavior terminate \
+        --image-id "$ami_id"                             \
+        --output text                                    \
+        --query 'Instances[*].InstanceId')
       echo "$codename $region $arch2 instance_id=$instance_id"
 
       # Add an instance tag
-      ec2-create-tags --tag Name="Alestic Git AMI builder" $instance_id
+      aws ec2 create-tags                               \
+        --resource "$instance_id"                       \
+        --tags "Key=Name,Value=Alestic Git AMI builder" \
+        --output text
 
       # Wait for the instance to start running and get the IP address
-      while host=$(ec2-describe-instances "$instance_id" |
-        egrep "^INSTANCE.*running" | cut -f17); test -z "$host";
-          do sleep 30; done
+      while state=$(aws ec2 describe-instances \
+             --region "$region" \
+             --instance-ids "$instance_id" \
+             --output text \
+             --query 'Reservations[*].Instances[*].State.Name');
+            test "$state" = "pending"
+      do
+        sleep 30
+      done; echo " $state"
+
+      host=$(aws ec2 describe-instances \
+             --region "$region" \
+             --instance-ids "$instance_id" \
+             --output text \
+             --query 'Reservations[*].Instances[*].PublicIpAddress')
       echo "$codename $region $arch2 host=$host"
       perl -MIO::Socket::INET -e "
         until(new IO::Socket::INET('$host:22')){sleep 1}"
@@ -102,7 +118,11 @@ for codename in $codenames; do
       tee alestic-git-$codename-$region-$arch2.log
 
       # Terminate the temporary AMI builder instance
-      ec2-terminate-instances $instance_id
+      aws ec2 terminate-instances \
+        --region "$region" \
+        --instance-ids "$instance_id" \
+        --output text \
+        --query 'TerminatingInstances[*].CurrentState.Name'
 
     done
   done

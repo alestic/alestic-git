@@ -21,6 +21,9 @@ codename=precise
 # AMI name timestamp
 now=$(date -u +%Y%m%d-%H%M)
 
+# aws-cli credentials
+export AWS_CONFIG_FILE=/mnt/aws.config
+
 # Command line options
 while [ $# -gt 0 ]; do
   case $1 in
@@ -39,6 +42,7 @@ case $codename in
   oneiric)    release=11.10     ;;
   precise)    release=12.04     ;;
   quantal)    release=12.10     ;;
+  trusty)     release=14.04     ;;
   *)          echo "$0: Unrecognized codename: $codename" >&2; exit 1;
 esac
 
@@ -55,8 +59,8 @@ fi
 name="${brand,}-git-server-ubuntu-$release-$codename-$arch2-$now"
 description="$brand Git Server - Ubuntu $release ${codename^} $arch2 $now"
 
-export EC2_CERT=$(echo /mnt/cert-*.pem)
-export EC2_PRIVATE_KEY=$(echo /mnt/pk-*.pem)
+#export EC2_CERT=$(echo /mnt/cert-*.pem)
+#export EC2_PRIVATE_KEY=$(echo /mnt/pk-*.pem)
 
 imagename=$codename-server-cloudimg-$arch2
 imageurl=http://cloud-images.ubuntu.com/$codename/current/$imagename.tar.gz
@@ -72,10 +76,8 @@ export DEBIAN_FRONTEND=noninteractive
 sudo perl -pi -e 's/^# *(deb .*multiverse)$/$1/' /etc/apt/sources.list
 sudo apt-get update
 sudo -E apt-get upgrade -y
-sudo -E apt-get install -y \
-  ec2-api-tools            \
-  ec2-ami-tools
-#  xfsprogs
+sudo apt-get install -y python-pip
+sudo pip install awscli
 
 # Download base Ubuntu server image built by Canonical
 image=/mnt/$imagename.img
@@ -104,7 +106,7 @@ sudo chmod 755 $imagedir/usr/sbin/policy-rc.d
 DEBIAN_FRONTEND=noninteractive
 sudo perl -pi -e 's/^# *(deb .*multiverse)$/$1/' \
   $imagedir/etc/apt/sources.list                 \
-  $imagedir/etc/cloud/templates/sources.list.tmpl
+  $imagedir/etc/cloud/templates/sources.list.ubuntu.tmpl
 #sudo chroot $imagedir add-apt-repository ppa:alestic
 sudo chroot $imagedir apt-get update
 sudo -E chroot $imagedir apt-get dist-upgrade -y
@@ -116,12 +118,10 @@ gituser=git
 # Install software
 sudo -E chroot $imagedir    \
   apt-get install -y        \
-    ec2-api-tools           \
     coreutils               \
     git-core                \
     nginx-light             \
-
-#    ec2-consistent-snapshot \
+    unattended-upgrades     \
 
 # Create git user with hardcoded UID
 sudo chroot $imagedir       \
@@ -176,13 +176,26 @@ sudo chroot $imagedir umount /proc
 sudo rm -f $imagedir/usr/sbin/policy-rc.d
 sudo rm -f $imagedir/run/resolvconf/resolv.conf
 
-export EC2_URL=http://ec2.$region.amazonaws.com
-
 # Create and mount temporary EBS volume with file system to hold new AMI image
-volumeid=$(sudo -E ec2-create-volume --size $size --availability-zone $zone |
-  cut -f2)
-instanceid=$(wget -qO- http://instance-data/latest/meta-data/instance-id)
-sudo -E ec2-attach-volume --device /dev/sdi --instance "$instanceid" "$volumeid"
+volumeid=$(sudo -E aws ec2 create-volume \
+             --availability-zone "$zone" \
+             --size "$size"              \
+             --volume-type gp2           \
+             --output text               \
+             --query 'VolumeId' )
+while sudo -E aws ec2 describe-volumes \
+        --volume-id "$volumeid" \
+        --output text \
+        --query 'Volumes[*].State' |
+      grep -v -q available
+  do sleep 3; done
+instance_id=$(wget -qO- http://instance-data/latest/meta-data/instance-id)
+sudo -E aws ec2 attach-volume   \
+   --device /dev/sdi            \
+   --instance-id "$instance_id" \
+   --volume-id "$volumeid"      \
+   --output text                \
+   --query 'State'
 dev=/dev/xvdi
 while [ ! -e $dev ]
   do sleep 3; done
@@ -195,25 +208,60 @@ sudo mount $dev $ebsimagedir
 sudo tar -cSf - -C $imagedir . | sudo tar xvf - -C $ebsimagedir
 sudo umount $imagedir
 sudo umount $ebsimagedir
-sudo -E ec2-detach-volume "$volumeid"
-while sudo -E ec2-describe-volumes "$volumeid" | grep -q ATTACHMENT
+sudo -E aws ec2 detach-volume \
+  --volume-id "$volumeid" \
+  --output text \
+  --query 'State'
+while sudo -E aws ec2 describe-volumes \
+        --volume-id "$volumeid" \
+        --output text \
+        --query 'Volumes[*].State' |
+      grep -v -q available
   do sleep 3; done
-snapshotid=$(sudo -E ec2-create-snapshot --description "$name" "$volumeid" |
-             cut -f2)
-while sudo -E ec2-describe-snapshots "$snapshotid" | grep -q pending
+snapshotid=$(sudo -E aws ec2 create-snapshot \
+               --description "$name" \
+               --volume-id "$volumeid" \
+               --output text \
+               --query 'SnapshotId' )
+while sudo -E aws ec2 describe-snapshots \
+        --snapshot-id "$snapshotid" \
+        --output text \
+        --query 'Snapshots[*].State' |
+      grep pending
   do sleep 30; done
 
 # Register the snapshot as a new AMI
-amiid=$(sudo -E ec2-register                      \
+block_device_mapping=$(cat <<EOF
+[
+  {
+    "DeviceName": "/dev/sda1",
+    "Ebs": {
+      "DeleteOnTermination": true, 
+      "SnapshotId": "$snapshotid",
+      "VolumeSize": $size,
+      "VolumeType": "gp2"
+    }
+  }, {
+    "DeviceName": "$ephemeraldev",
+    "VirtualName": "ephemeral0"
+  }
+]
+EOF
+)
+amiid=$(sudo -E aws ec2 register-image            \
   --name "$name"                                  \
   --description "$description"                    \
   --architecture "$arch"                          \
-  --kernel "$akiid"                               \
-  --block-device-mapping $ephemeraldev=ephemeral0 \
-  --snapshot "$snapshotid" |
-  cut -f2)
+  --kernel-id "$akiid"                            \
+  --block-device-mapping "$block_device_mapping"  \
+  --root-device-name "/dev/sda1"                  \
+  --output text                                   \
+  --query 'ImageId'
+)
 
-sudo -E ec2-delete-volume "$volumeid"
+sudo -E aws ec2 delete-volume \
+  --volume-id "$volumeid" \
+  --output text
 
 cat <<EOF
 AMI: $amiid $codename $region $arch2
@@ -235,10 +283,13 @@ snapshot_id=$snapshotid
 
 Test the new AMI using something like:
 
-  export EC2_URL=http://ec2.$region.amazonaws.com
-  ec2-run-instances \\
+  instance_id=\$(aws ec2 run-instances \\
+    --region $region \\
     --key \$USER \\
     --instance-type t1.micro \\
-    $amiid
+    --image-id $amiid
+    --output text \\
+    --query 'Instances[*].InstanceId' )
+  echo instance_id=\$instance_id
 
 EOF
