@@ -228,7 +228,7 @@ while sudo -E aws ec2 describe-snapshots \
         --output text \
         --query 'Snapshots[*].State' |
       grep pending
-  do sleep 30; done
+  do sleep 10; done
 
 # Register the snapshot as a new AMI
 block_device_mapping=$(cat <<EOF

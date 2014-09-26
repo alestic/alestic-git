@@ -86,7 +86,7 @@ for codename in $codenames; do
              --query 'Reservations[*].Instances[*].State.Name');
             test "$state" = "pending"
       do
-        sleep 30
+        sleep 3
       done; echo " $state"
 
       host=$(aws ec2 describe-instances \
