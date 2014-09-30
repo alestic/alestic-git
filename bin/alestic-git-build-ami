@@ -123,6 +123,14 @@ sudo -E chroot $imagedir    \
     nginx-light             \
     unattended-upgrades     \
 
+# Apply Ubuntu security patches daily
+cat <<EOF | sudo tee $imagedir/etc/apt/apt.conf.d/10periodic > /dev/null
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Download-Upgradeable-Packages "1";
+APT::Periodic::AutocleanInterval "7";
+APT::Periodic::Unattended-Upgrade "1";
+EOF
+
 # Create git user with hardcoded UID
 sudo chroot $imagedir       \
   addgroup --gid 500 $gituser
