@@ -66,7 +66,15 @@ imagename=$codename-server-cloudimg-$arch2
 imageurl=http://cloud-images.ubuntu.com/$codename/current/$imagename.tar.gz
 amisurl=http://cloud-images.ubuntu.com/query/$codename/server/released.current.txt
 zoneurl=http://instance-data/latest/meta-data/placement/availability-zone
-zone=$(wget -qO- $zoneurl)
+
+# Sometimes, instance-data does not resolve right away.
+# Loop to give it some time.
+while zone=$(wget -qO- $zoneurl);
+      test "$zone" = ""
+do
+  sleep 30
+done; echo " $zone"
+
 region=$(echo $zone | perl -pe 's/.$//')
 akiid=$(wget -qO- $amisurl | egrep "ebs.$arch2.$region.*paravirtual" | cut -f9)
 #ariid=$(wget -qO- $amisurl | egrep "ebs.$arch2.$region.*paravirtual" | cut -f10)
