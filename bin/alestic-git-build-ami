@@ -79,6 +79,9 @@ region=$(echo $zone | perl -pe 's/.$//')
 akiid=$(wget -qO- $amisurl | egrep "ebs.$arch2.$region.*paravirtual" | cut -f9)
 #ariid=$(wget -qO- $amisurl | egrep "ebs.$arch2.$region.*paravirtual" | cut -f10)
 
+# Set the default region for aws cli to our current region
+export AWS_DEFAULT_REGION=$region
+
 # Update and install Ubuntu packages
 export DEBIAN_FRONTEND=noninteractive
 sudo perl -pi -e 's/^# *(deb .*multiverse)$/$1/' /etc/apt/sources.list
