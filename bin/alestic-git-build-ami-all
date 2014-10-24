@@ -74,6 +74,7 @@ for codename in $codenames; do
 
       # Add an instance tag
       aws ec2 create-tags                               \
+        --region "$region"                              \
         --resource "$instance_id"                       \
         --tags "Key=Name,Value=Alestic Git AMI builder" \
         --output text
